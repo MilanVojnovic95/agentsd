@@ -55,6 +55,10 @@ Debug the hook event flow interactively:
 npm run debug:hooks
 ```
 
+## Testing
+
+`npm test` runs unit, integration, and end-to-end layers. E2E uses [testagent](https://github.com/paultyng/testagent), a deterministic fake of the Claude Code CLI (no model or API key); E2E tests skip when it's not on PATH. `npm run test:coverage` writes a report under `coverage/`. CI runs everything on Linux, macOS, and Windows.
+
 ## Actions
 
 | Action | Type | Description |
