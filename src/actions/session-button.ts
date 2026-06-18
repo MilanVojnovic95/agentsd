@@ -2,14 +2,16 @@ import { action, type KeyDownEvent } from "@elgato/streamdeck";
 import { basename } from "node:path";
 import { ManagedAction } from "./base";
 import { State } from "../types";
-import { escapeXml, svgDataUri } from "../util/svg";
+import { svgDataUri } from "../util/svg";
+import { renderSessionSlot, renderStatusCard, type SessionInfo } from "../renderers/session-slot-renderer";
 
-const STATE_COLORS: Record<State, string> = {
-  [State.DISCONNECTED]: "#333333",
-  [State.IDLE]: "#1a7f37",
-  [State.PROCESSING]: "#1f6feb",
-  [State.AWAITING_PERMISSION]: "#d29922",
-  [State.AWAITING_ELICITATION]: "#8957e5",
+/** Map agentsd's state enum to AgentDeck's lowercase renderer state strings. */
+const RENDER_STATE: Record<State, string> = {
+  [State.DISCONNECTED]: "disconnected",
+  [State.IDLE]: "idle",
+  [State.PROCESSING]: "processing",
+  [State.AWAITING_PERMISSION]: "awaiting_permission",
+  [State.AWAITING_ELICITATION]: "awaiting_option",
 };
 
 @action({ UUID: "com.paultyng.agentsd.session" })
@@ -20,30 +22,21 @@ export class SessionButton extends ManagedAction {
 
   protected render(): void {
     const session = this.manager?.activeSession;
-    const title = session ? basename(session.cwd) : "No Session";
-    const color = session ? STATE_COLORS[session.state] : STATE_COLORS[State.DISCONNECTED];
-    const count = this.manager?.sessionCount ?? 0;
-    const suffix = count > 1 ? `(${(this.manager?.activeIndex ?? 0) + 1}/${count})` : "";
-
-    let textSvg: string;
-    if (suffix) {
-      textSvg =
-        `<text x="72" y="58" text-anchor="middle" dominant-baseline="middle" ` +
-        `font-family="sans-serif" font-size="22" font-weight="bold" fill="white">${escapeXml(title)}</text>` +
-        `<text x="72" y="86" text-anchor="middle" dominant-baseline="middle" ` +
-        `font-family="sans-serif" font-size="18" fill="white">${escapeXml(suffix)}</text>`;
+    let image: string;
+    if (!session) {
+      image = svgDataUri(renderStatusCard({ icon: "no-session", label: "No Session", tone: "muted" }));
     } else {
-      textSvg =
-        `<text x="72" y="72" text-anchor="middle" dominant-baseline="middle" ` +
-        `font-family="sans-serif" font-size="22" font-weight="bold" fill="white">${escapeXml(title)}</text>`;
+      const count = this.manager?.sessionCount ?? 1;
+      const idx = (this.manager?.activeIndex ?? 0) + 1;
+      const name = count > 1 ? `${basename(session.cwd)} ${idx}/${count}` : basename(session.cwd);
+      const info: SessionInfo = {
+        state: RENDER_STATE[session.state],
+        agentType: "claude-code",
+        projectName: basename(session.cwd),
+        modelName: session.model ?? undefined,
+      };
+      image = svgDataUri(renderSessionSlot(info, true, 0, name, { animated: false }));
     }
-
-    const image = svgDataUri(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144">` +
-      `<rect width="144" height="144" rx="16" fill="${escapeXml(color)}"/>` +
-      `${textSvg}</svg>`,
-    );
-
     for (const act of this.actions) {
       act.setTitle("");
       act.setImage(image);

@@ -1,7 +1,8 @@
 import { action, type KeyDownEvent } from "@elgato/streamdeck";
 import { ManagedAction } from "./base";
 import { State } from "../types";
-import { iconButton } from "../util/svg";
+import { svgDataUri } from "../util/svg";
+import { renderStatusCard } from "../renderers/session-slot-renderer";
 
 @action({ UUID: "com.paultyng.agentsd.approve" })
 export class ApproveButton extends ManagedAction {
@@ -12,15 +13,13 @@ export class ApproveButton extends ManagedAction {
   }
 
   protected render(): void {
-    const session = this.manager?.activeSession;
-    const awaiting = session?.state === State.AWAITING_PERMISSION;
-    const icon = iconButton(
-      awaiting ? "#1a7f37" : "#555555",
-      `<path d="M40 72 L62 94 L104 52" stroke="white" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`,
+    const awaiting = this.manager?.activeSession?.state === State.AWAITING_PERMISSION;
+    const image = svgDataUri(
+      renderStatusCard({ icon: "allow", label: "APPROVE", subtitle: awaiting ? "permission" : "idle", tone: awaiting ? "ready" : "muted" }),
     );
     for (const act of this.actions) {
-      act.setTitle("Approve");
-      act.setImage(icon);
+      act.setTitle("");
+      act.setImage(image);
     }
   }
 }

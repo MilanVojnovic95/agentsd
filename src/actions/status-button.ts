@@ -1,58 +1,37 @@
 import { action } from "@elgato/streamdeck";
 import { ManagedAction } from "./base";
-import { State } from "../types";
-import { iconButton } from "../util/svg";
-
-const AGENT_COLORS = ["#1f6feb", "#d29922", "#e16f24", "#da3633"];
-
-function agentColor(count: number): string | null {
-  if (count <= 0) return null;
-  return AGENT_COLORS[Math.min(count - 1, AGENT_COLORS.length - 1)];
-}
+import { State, type SessionState } from "../types";
+import { svgDataUri } from "../util/svg";
+import { renderStatusCard, type StatusCardConfig } from "../renderers/session-slot-renderer";
 
 @action({ UUID: "com.paultyng.agentsd.status" })
 export class StatusButton extends ManagedAction {
   protected render(): void {
     const session = this.manager?.activeSession;
-    if (!session) {
-      for (const act of this.actions) act.setTitle("—");
-      return;
+    const cfg = this.cardFor(session);
+    const image = svgDataUri(renderStatusCard(cfg));
+    for (const act of this.actions) {
+      act.setTitle("");
+      act.setImage(image);
     }
+  }
 
-    const lines: string[] = [];
+  private cardFor(session: SessionState | undefined): StatusCardConfig {
+    if (!session) return { icon: "no-session", label: "No Session", tone: "muted" };
+    const work = session.activeWork > 0 ? `${session.activeWork} agent${session.activeWork > 1 ? "s" : ""}` : undefined;
     switch (session.state) {
       case State.PROCESSING:
-        lines.push("Working");
-        if (session.currentTool) lines.push(session.currentTool);
-        break;
+        return { icon: "activity", label: "Working", subtitle: session.currentTool ?? work ?? "running", detail: session.currentTool ? work : undefined, tone: "info" };
       case State.AWAITING_PERMISSION:
-        lines.push("Permission?");
-        break;
+        return { icon: "option", label: "Permission?", subtitle: session.currentTool ?? "approve / deny", tone: "warning" };
       case State.AWAITING_ELICITATION:
-        lines.push("Question?");
-        break;
+        return { icon: "option", label: "Question?", subtitle: "needs input", tone: "purple" };
       case State.IDLE:
-        if (session.lastError) {
-          lines.push("Error");
-        } else {
-          lines.push("Idle");
-        }
-        break;
+        return session.lastError
+          ? { icon: "deny", label: "Error", subtitle: "last run failed", tone: "danger" }
+          : { icon: "ready", label: "Idle", subtitle: work, tone: "ready" };
       default:
-        lines.push(session.state);
-    }
-
-    if (session.activeWork > 0) {
-      lines.push("", `${session.activeWork} agent${session.activeWork > 1 ? "s" : ""}`);
-    }
-
-    const text = lines.join("\n");
-    const errorColor = session.state === State.IDLE && session.lastError ? "#da3633" : null;
-    const color = errorColor ?? agentColor(session.activeWork);
-
-    for (const act of this.actions) {
-      act.setTitle(text);
-      act.setImage(color ? iconButton(color, "") : undefined);
+        return { icon: "offline", label: "Offline", tone: "muted" };
     }
   }
 }

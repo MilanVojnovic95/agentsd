@@ -53,6 +53,25 @@ export class SessionManager extends EventEmitter {
     return this.sessions.size;
   }
 
+  /** Sessions in stable insertion order — used by per-key slot rendering. */
+  orderedSessions(): SessionState[] {
+    return [...this.sessions.values()];
+  }
+
+  /** Session occupying a given slot index (insertion order), or undefined when empty. */
+  sessionAt(index: number): SessionState | undefined {
+    return this.orderedSessions()[index];
+  }
+
+  /** Make the session at a slot index active, so Approve/Deny/Stop target it. */
+  focusIndex(index: number): void {
+    const count = this.sessions.size;
+    if (count === 0 || index < 0 || index >= count) return;
+    if (index === this._activeIndex) return;
+    this._activeIndex = index;
+    this.emit("activeSessionChanged", this.activeSession);
+  }
+
   /**
    * Serializable per-session view for the /debug/sessions endpoint and tests.
    * Drops PendingPermission's req/res/timer, which are not JSON-safe.

@@ -10,6 +10,7 @@ import { DenyButton } from "./actions/deny-button";
 import { FocusButton } from "./actions/focus-button";
 import { ModeButton } from "./actions/mode-button";
 import { SessionButton } from "./actions/session-button";
+import { SessionSlot } from "./actions/session-slot";
 import { SessionDial } from "./actions/session-dial";
 import { StatusButton } from "./actions/status-button";
 import { StopButton } from "./actions/stop-button";
@@ -30,6 +31,7 @@ setManager(sessionManager);
 
 // Register actions
 streamDeck.actions.registerAction(new SessionButton());
+streamDeck.actions.registerAction(new SessionSlot());
 streamDeck.actions.registerAction(new ModeButton());
 streamDeck.actions.registerAction(new StatusButton());
 streamDeck.actions.registerAction(new StopButton());

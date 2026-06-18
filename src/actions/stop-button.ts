@@ -1,7 +1,8 @@
 import streamDeck, { action, type KeyDownEvent } from "@elgato/streamdeck";
 import { ManagedAction } from "./base";
 import { State } from "../types";
-import { iconButton } from "../util/svg";
+import { svgDataUri } from "../util/svg";
+import { renderStopButton } from "../renderers/session-slot-renderer";
 
 @action({ UUID: "com.paultyng.agentsd.stop" })
 export class StopButton extends ManagedAction {
@@ -14,14 +15,11 @@ export class StopButton extends ManagedAction {
 
   protected render(): void {
     const session = this.manager?.activeSession;
-    const active = session && session.state !== State.DISCONNECTED && session.state !== State.IDLE;
-    const icon = iconButton(
-      active ? "#da3633" : "#555555",
-      `<rect x="44" y="44" width="56" height="56" rx="8" fill="white"/>`,
-    );
+    const active = !!session && session.state !== State.DISCONNECTED && session.state !== State.IDLE;
+    const image = svgDataUri(renderStopButton(active));
     for (const act of this.actions) {
-      act.setTitle("Stop");
-      act.setImage(icon);
+      act.setTitle("");
+      act.setImage(image);
     }
   }
 }

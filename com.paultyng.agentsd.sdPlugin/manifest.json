@@ -10,6 +10,14 @@
       "States": [{ "Image": "imgs/session", "ShowTitle": true, "TitleAlignment": "bottom", "TitleColor": "#FFFFFF" }]
     },
     {
+      "UUID": "com.paultyng.agentsd.session-slot",
+      "Name": "Session Slot",
+      "Icon": "imgs/session",
+      "Tooltip": "Shows one session per key (wall view). Auto-maps to key position; press to select.",
+      "Controllers": ["Keypad"],
+      "States": [{ "Image": "imgs/session", "ShowTitle": false }]
+    },
+    {
       "UUID": "com.paultyng.agentsd.mode",
       "Name": "Mode",
       "Icon": "imgs/mode",

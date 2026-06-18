@@ -1,105 +1,105 @@
-# agentsd
+# agentsd — Stream Deck Mini (Discord Edition)
 
-Stream Deck plugin for managing [Claude Code](https://claude.ai/code) sessions. Monitor session state, approve or deny permission requests, and control agents from hardware buttons.
+Turn an **Elgato Stream Deck Mini** into a **Claude Code controller**: live session previews on the keys, and approve / deny / always-allow permission prompts straight from hardware buttons.
 
-<p align="center"><img src="docs/preview.png" alt="agentsd buttons on a Stream Deck" width="320"></p>
+This is a Stream Deck **Mini** adaptation of [`paultyng/agentsd`](https://github.com/paultyng/agentsd), with the on-key visuals (creature, gradient cards, animated state borders) ported from [`puritysb/AgentDeck`](https://github.com/puritysb/AgentDeck). The original AgentDeck plugin in [Go Ando's post](https://github.com/puritysb/AgentDeck) only supports the Stream Deck **+** (it relies on the 4 encoders and the LCD touchstrip). The Mini has just 6 keys and no dials/touchscreen — so this fork keeps the part that fits: **live key previews + button-based permission control.**
+
+## What it looks like
+
+A typical 6-key layout on the Mini:
+
+```
+┌─────────┬─────────┬─────────┐
+│ Slot 1  │ Slot 2  │ Slot 3  │   ← live session previews (state, project, model)
+├─────────┼─────────┼─────────┤
+│ APPROVE │ ALWAYS  │  DENY   │   ← resolve the active permission prompt
+└─────────┴─────────┴─────────┘
+```
+
+Each **Session Slot** key auto-maps to its physical position (top→bottom, left→right) and shows one Claude session: state-colored card, the Claude robot creature, project name, model, and an animated orbiting border when the session is working or waiting. Pressing a slot makes that session active, so **Approve / Always / Deny** target it.
 
 ## Requirements
 
-- **macOS 13+** (Windows support tracked separately; see issue for details)
-- **Stream Deck app 6.6+** plus a [Stream Deck](https://www.elgato.com/stream-deck) device
-- **Node.js 20+**
+- **macOS 13+**
+- **Stream Deck app 6.6+** with a **Stream Deck Mini** (Discord Edition or standard — identical to the SDK)
+- **Node.js 20+** *(for building/testing; the plugin itself runs on Stream Deck's bundled Node 20)*
 - **Claude Code** with [HTTP hooks](https://code.claude.com/docs/en/hooks-guide) support
-
-## How it works
-
-Claude Code HTTP hooks post events to a local server (`127.0.0.1:9200`). The plugin translates those events into session state on Stream Deck buttons and dials.
-
-```
-Claude Code hooks → HTTP server (:9200) → SessionManager → Stream Deck UI
-```
-
-`PermissionRequest` hooks hold the HTTP response open (up to 120 s) so you can approve or deny directly from a button press.
 
 ## Install
 
 ```sh
-git clone https://github.com/paultyng/agentsd.git && cd agentsd
+git clone https://github.com/MilanVojnovic95/agentsd.git && cd agentsd
 npm install
-npm install -g @elgato/cli   # one-time global; provides the `streamdeck` CLI used by `npm run link`/`dev`
+npm install -g @elgato/cli        # one-time; provides the `streamdeck` CLI
 npm run build
-npm run link                 # register plugin with Stream Deck
-npm run hooks:install        # add Claude Code HTTP hooks to ~/.claude/settings.json
+npm run link                      # register the plugin with the Stream Deck app
+npm run hooks:install             # add Claude Code HTTP hooks to ~/.claude/settings.json
 ```
 
-After linking, restart the Stream Deck app. The actions appear under "Claude Code" in the action list.
+Restart the Stream Deck app. Under the **"Claude Code"** category, drag **Session Slot** onto your top-row keys and **Approve / Always / Deny** onto the bottom row. Start any Claude Code session and the keys come alive.
+
+### Rebuild after changes
+
+```sh
+npm run build && streamdeck restart com.paultyng.agentsd
+```
 
 ### Uninstall
 
 ```sh
-npm run hooks:uninstall      # remove hooks from ~/.claude/settings.json
-npm run unlink               # unregister plugin
+npm run hooks:uninstall           # remove hooks from ~/.claude/settings.json
+npm run unlink                    # unregister the plugin
 ```
 
-## Configuration
+## How it works
 
-| Env var | Default | Effect |
-|---|---|---|
-| `AGENTSD_DEBUG` | unset | When `1`, the hook server exposes `GET /debug/sessions` returning a JSON snapshot of every tracked session. Used by the test suite; safe to enable locally for diagnostics. |
-
-## Development
-
-```sh
-npm run watch        # rebuild on file changes
-npm run dev          # Stream Deck dev mode (hot reload)
-npm run debug:hooks  # interactive hook event probe
+```
+Claude Code HTTP hooks → local server (127.0.0.1:9200) → SessionManager → Stream Deck key images
 ```
 
-## Testing
-
-`npm test` runs unit, integration, and end-to-end layers. E2E uses [testagent](https://github.com/paultyng/testagent), a deterministic fake of the Claude Code CLI (no model or API key); E2E tests skip when it's not on PATH. `npm run test:coverage` writes a report under `coverage/`. CI runs everything on Linux, macOS, and Windows.
+Claude Code posts lifecycle events (SessionStart, PreToolUse, Stop, PermissionRequest, …) to a small local server. `PermissionRequest` hooks hold the HTTP response open (up to 120 s) so a button press can approve or deny. No bridge daemon, no PTY parsing.
 
 ## Actions
 
-| Action | Type | Description |
-|--------|------|-------------|
-| **Session** | Button | Active session name, color-coded by state. Press to cycle sessions. Shows `(N/M)` counter. |
-| **Session Dial** | Encoder | Rotate to cycle sessions. Same info as Session button in dial feedback. |
-| **Status** | Button | Current state (`Working`, `Permission?`, `Question?`, `Idle`, `Error`), tool name, active work count (subagents + tasks). |
-| **Mode** | Button | Permission mode (`Default`, `Plan`, `Auto`, etc.) and model name. |
-| **Approve** | Button | Approve pending permission. Green when active, gray otherwise. |
-| **Always Allow** | Button | Approve and add session-scoped allow rule for the tool. Gold when active, gray otherwise. |
-| **Deny** | Button | Deny pending permission. Red when active, gray otherwise. |
-| **Stop** | Button | Send Ctrl+C interrupt to frontmost Ghostty terminal. Red when a session is active. |
-| **Focus** | Button | Bring Ghostty (or Claude Desktop) to foreground. |
+| Action | Description |
+|--------|-------------|
+| **Session Slot** | One session per key (auto-mapped by position). Live state card with creature, project, model, animated border. Press to make active. |
+| **Session** | Single active session, press to cycle. |
+| **Approve** | Approve the active session's pending permission. |
+| **Always** | Approve and add a session-scoped allow rule for the tool. |
+| **Deny** | Deny the pending permission. |
+| **Status** | Current state (Working / Permission? / Question? / Idle / Error). |
+| **Mode** | Permission mode + model. |
+| **Stop** | Send an interrupt (Ctrl+C / SIGINT) to the active session. |
+| **Focus** | Bring Ghostty (or Claude Desktop) to the foreground. |
 
 ## Session states
 
 | State | Color | Meaning |
 |-------|-------|---------|
-| `IDLE` | Green | Session connected, waiting for input |
-| `PROCESSING` | Blue | Tool execution in progress |
-| `AWAITING_PERMISSION` | Gold | Permission prompt — approve or deny from Stream Deck |
-| `AWAITING_ELICITATION` | Purple | Claude is asking a question |
-| `DISCONNECTED` | Gray | No active session |
+| `IDLE` | green | Connected, waiting for input |
+| `RUNNING` | blue | Tool execution in progress |
+| `PERMIT?` | amber | Permission prompt — approve/deny from the deck |
+| `disconnected` | gray | No active session |
 
-## Key behaviors
+## What's different from the Stream Deck+ original
 
-- **Auto-foreground**: Permission requests and elicitations automatically bring their session to the active slot.
-- **Permission queue**: Multiple sessions can have pending permissions simultaneously. They're foregrounded in arrival order; resolving one auto-advances to the next.
-- **Permission timeout**: 120s. Auto-denies if no response.
-- **Stale pruning**: Idle or disconnected sessions with no activity for 60s are automatically removed.
-- **Auto-create sessions**: If a hook event arrives for an unknown session (e.g., plugin restarted mid-session), the session is created as IDLE.
-- **Model backfill**: If the hook payload doesn't include a model, it's extracted from the session transcript.
+- **6 keys, no encoders/touchstrip.** No dial-based session scrolling or the LCD multi-option plan dialog. Permission approval is button-based (Approve / Always / Deny).
+- **Added a `Session Slot` keypad action** that maps each session to a physical key (the "wall of sessions" view), plus `SessionManager.sessionAt / orderedSessions / focusIndex`.
+- **Ported AgentDeck's SVG renderers** (`src/renderers/`): creature logos, the full session-slot card with animated orbiting borders, and status cards — brightened for the Mini's display.
 
-## Hook events
+## Development
 
-The plugin registers hooks for all Claude Code lifecycle events:
+```sh
+npm run watch        # rebuild on change
+npm run dev          # Stream Deck dev mode
+npm test             # unit + integration + e2e (Node 20+)
+```
 
-`SessionStart`, `SessionEnd`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `Stop`, `StopFailure`, `PermissionRequest`, `Notification`, `SubagentStart`, `SubagentStop`, `TaskCreated`, `TaskCompleted`, `Elicitation`, `ElicitationResult`
+## Credits & licenses
 
-Each event is posted to `http://localhost:9200/hooks/{EventName}`. The `hooks:install` script manages registration in `~/.claude/settings.json`.
+- Base plugin: [`paultyng/agentsd`](https://github.com/paultyng/agentsd) — MIT.
+- On-key visuals (creature language, session-slot & status-card renderers, color palette) ported from [`puritysb/AgentDeck`](https://github.com/puritysb/AgentDeck) — MIT © 2025 SerendipityBound. Attribution retained in each ported file under `src/renderers/`.
+- Inspiration: the terminal-side fleet manager [`asheshgoplani/agent-deck`](https://github.com/asheshgoplani/agent-deck).
 
-## Acknowledgments
-
-Inspired in part by [AgentDeck](https://github.com/puritysb/AgentDeck).
+Released under the MIT License (see [LICENSE](LICENSE)).

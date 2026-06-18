@@ -1,7 +1,8 @@
 import { action, type KeyDownEvent } from "@elgato/streamdeck";
 import { ManagedAction } from "./base";
 import { State } from "../types";
-import { iconButton } from "../util/svg";
+import { svgDataUri } from "../util/svg";
+import { renderStatusCard } from "../renderers/session-slot-renderer";
 
 @action({ UUID: "com.paultyng.agentsd.deny" })
 export class DenyButton extends ManagedAction {
@@ -12,15 +13,13 @@ export class DenyButton extends ManagedAction {
   }
 
   protected render(): void {
-    const session = this.manager?.activeSession;
-    const awaiting = session?.state === State.AWAITING_PERMISSION;
-    const icon = iconButton(
-      awaiting ? "#da3633" : "#555555",
-      `<path d="M44 44 L100 100 M100 44 L44 100" stroke="white" stroke-width="10" stroke-linecap="round"/>`,
+    const awaiting = this.manager?.activeSession?.state === State.AWAITING_PERMISSION;
+    const image = svgDataUri(
+      renderStatusCard({ icon: "deny", label: "DENY", subtitle: awaiting ? "reject" : "idle", tone: awaiting ? "danger" : "muted" }),
     );
     for (const act of this.actions) {
-      act.setTitle("Deny");
-      act.setImage(icon);
+      act.setTitle("");
+      act.setImage(image);
     }
   }
 }
